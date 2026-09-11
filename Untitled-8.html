@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arsip Tenaga Kerja - SipilPro</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS Client CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100 font-sans p-4 sm:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between pb-6 border-b border-gray-200 gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Arsip & Identitas Tenaga Kerja</h1>
+                <p class="text-sm text-gray-500">Pusat data histori, kualifikasi, dan profil foto personil proyek.</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="toggleModal(true)" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow transition">
+                    <i class="fa-solid fa-id-card"></i> Tambah Arsip Pekerja
+                </button>
+                <button onclick="exportData()" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow transition">
+                    <i class="fa-solid fa-file-export"></i> Ekspor Arsip (CSV)
+                </button>
+            </div>
+        </div>
+
+        <!-- Metric Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 my-6">
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-500 font-medium">Total Terarsip</p>
+                    <p id="stat-total" class="text-2xl font-bold text-gray-800 mt-1">0</p>
+                </div>
+                <div class="p-3 bg-blue-50 text-blue-600 rounded-lg"><i class="fa-solid fa-box-archive text-xl"></i></div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-500 font-medium">Personil Aktif</p>
+                    <p id="stat-aktif" class="text-2xl font-bold text-emerald-600 mt-1">0</p>
+                </div>
+                <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg"><i class="fa-solid fa-user-check text-xl"></i></div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-500 font-medium">Personil Non-Aktif</p>
+                    <p id="stat-non-aktif" class="text-2xl font-bold text-rose-600 mt-1">0</p>
+                </div>
+                <div class="p-3 bg-rose-50 text-rose-600 rounded-lg"><i class="fa-solid fa-user-slash text-xl"></i></div>
+            </div>
+        </div>
+
+        <!-- Filter & Search Bar -->
+        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-6 flex flex-col md:flex-row gap-4 justify-between">
+            <div class="relative flex-1">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-gray-400"></i>
+                <input type="text" id="searchInput" oninput="renderTable()" placeholder="Cari nama, ID, atau No. HP..." class="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <div class="flex gap-2">
+                <select id="filterJabatan" onchange="renderTable()" class="border border-gray-300 rounded-lg text-sm px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <option value="">Semua Jabatan</option>
+                    <option value="Mandor Structure">Mandor Structure</option>
+                    <option value="Tukang Pembesian">Tukang Pembesian</option>
+                    <option value="Tukang Bekisting">Tukang Bekisting</option>
+                    <option value="Pekerja Kasar">Pekerja Kasar</option>
+                </select>
+                <select id="filterStatus" onchange="renderTable()" class="border border-gray-300 rounded-lg text-sm px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    <option value="">Semua Status Keaktifan</option>
+                    <option value="Aktif">Aktif</option>
+                    <option value="Non-Aktif">Non-Aktif</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Table Data -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-gray-600">
+                    <thead class="bg-slate-50 text-xs text-gray-700 uppercase border-b border-gray-200">
+                        <tr>
+                            <th class="px-6 py-3">Identitas Pekerja</th>
+                            <th class="px-6 py-3">Umur</th>
+                            <th class="px-6 py-3">Jabatan & Kontak</th>
+                            <th class="px-6 py-3">Status Kerja</th>
+                            <th class="px-6 py-3">Keaktifan</th>
+                            <th class="px-6 py-3 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="workerTableBody" class="divide-y divide-gray-200">
+                        <tr><td colspan="6" class="text-center py-6 text-gray-400">Memuat data dari database...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL POPUP FORM -->
+    <div id="modalForm" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-lg font-bold text-gray-800">Input Data Arsip Pekerja</h3>
+                <button onclick="toggleModal(false)" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <form id="addWorkerForm" onsubmit="saveWorker(event)" class="mt-4 space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">URL Foto Profil (Link Gambar)</label>
+                    <input type="text" id="inputFoto" placeholder="https://images.unsplash.com/..." required class="w-full px-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Lengkap</label>
+                    <input type="text" id="inputNama" required class="w-full px-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">ID Pekerja</label>
+                        <input type="text" id="inputId" placeholder="TK-000" required class="w-full px-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Umur (Tahun)</label>
+                        <input type="number" id="inputUmur" placeholder="35" required class="w-full px-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">No. HP / WhatsApp</label>
+                    <input type="text" id="inputPhone" placeholder="0812xxxx" required class="w-full px-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Jabatan / Spesialisasi</label>
+                    <select id="inputJabatan" required class="w-full px-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+                        <option value="Mandor Structure">Mandor Structure</option>
+                        <option value="Tukang Pembesian">Tukang Pembesian</option>
+                        <option value="Tukang Bekisting">Tukang Bekisting</option>
+                        <option value="Pekerja Kasar">Pekerja Kasar</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Status Kepegawaian</label>
+                        <select id="inputKepegawaian" required class="w-full px-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+                            <option value="Kontrak Proyek">Kontrak Proyek</option>
+                            <option value="Tetap">Tetap</option>
+                            <option value="Harian Lepas">Harian Lepas</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Status Keaktifan</label>
+                        <select id="inputKeaktifan" required class="w-full px-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+                            <option value="Aktif">Aktif</option>
+                            <option value="Non-Aktif">Non-Aktif</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-3 border-t">
+                    <button type="button" onclick="toggleModal(false)" class="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-amber-500 text-slate-950 font-semibold text-sm rounded-lg hover:bg-amber-600">Simpan Arsip</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        const SUPABASE_URL = 'https://lxwnujdnnwqecomjegpf.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx4d251amRubndxZWNvbWplZ3BmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMTIyNDYsImV4cCI6MjEwNDY4ODI0Nn0.vWi1g5e5wtJ4gNu_-h6OmnznwXhh8Wzp9agVgT_lfKY';
+
+        // Inisialisasi klien Supabase
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let workers = [];
+
+        // Fungsi untuk mengambil data dari Supabase
+        async function fetchWorkers() {
+            const { data, error } = await supabaseClient
+                .from('workers')
+                .select('*');
+
+            if (error) {
+                console.error('Gagal mengambil data:', error.message);
+                return;
+            }
+
+            workers = data || [];
+            renderTable();
+        }
+
+        function renderTable() {
+            const tableBody = document.getElementById("workerTableBody");
+            const searchVal = document.getElementById("searchInput").value.toLowerCase();
+            const filterJab = document.getElementById("filterJabatan").value;
+            const filterStat = document.getElementById("filterStatus").value;
+
+            tableBody.innerHTML = "";
+
+            const filteredWorkers = workers.filter(w => {
+                const matchSearch = w.name.toLowerCase().includes(searchVal) || w.id.toLowerCase().includes(searchVal) || w.phone.includes(searchVal);
+                const matchJabatan = filterJab === "" || w.role === filterJab;
+                const matchStatus = filterStat === "" || w.status === filterStat;
+                return matchSearch && matchJabatan && matchStatus;
+            });
+
+            if (filteredWorkers.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-gray-400">Arsip pekerja tidak ditemukan.</td></tr>`;
+            } else {
+                filteredWorkers.forEach((w) => {
+                    const isAktif = w.status === "Aktif";
+                    const statusBadge = isAktif ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-600";
+
+                    tableBody.innerHTML += `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 flex items-center gap-3 font-medium text-gray-900">
+                                <img src="${w.photo}" alt="${w.name}" class="w-10 h-10 rounded-full object-cover border border-gray-300 shadow-sm" onerror="this.src='https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'">
+                                <div>
+                                    <p class="font-semibold text-gray-800">${w.name}</p>
+                                    <p class="text-xs text-gray-400">ID: ${w.id}</p>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 font-medium">${w.age} Thn</td>
+                            <td class="px-6 py-4">
+                                <p class="text-gray-800 font-medium">${w.role}</p>
+                                <p class="text-xs text-gray-400"><i class="fa-solid fa-phone text-[10px] mr-1"></i>${w.phone}</p>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="bg-blue-50 text-blue-700 text-xs px-2.5 py-1 rounded-md border border-blue-200 font-medium">${w.contract}</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusBadge}">
+                                    <span class="w-1.5 h-1.5 rounded-full ${isAktif ? 'bg-emerald-500' : 'bg-gray-400'}"></span> ${w.status}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <button onclick="deleteWorker('${w.id}')" class="text-slate-400 hover:text-rose-600 transition" title="Hapus Arsip">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById("stat-total").innerText = `${workers.length} Orang`;
+            document.getElementById("stat-aktif").innerText = `${workers.filter(w => w.status === 'Aktif').length} Orang`;
+            document.getElementById("stat-non-aktif").innerText = `${workers.filter(w => w.status === 'Non-Aktif').length} Orang`;
+        }
+
+        function toggleModal(show) {
+            const modal = document.getElementById("modalForm");
+            if (show) modal.classList.remove("hidden"), modal.classList.add("flex");
+            else modal.classList.add("hidden"), modal.classList.remove("flex");
+        }
+
+        async function saveWorker(e) {
+            e.preventDefault();
+
+            const newWorker = {
+                id: document.getElementById("inputId").value.trim(),
+                name: document.getElementById("inputNama").value.trim(),
+                age: Number(document.getElementById("inputUmur").value),
+                phone: document.getElementById("inputPhone").value.trim(),
+                role: document.getElementById("inputJabatan").value,
+                contract: document.getElementById("inputKepegawaian").value,
+                status: document.getElementById("inputKeaktifan").value,
+                photo: document.getElementById("inputFoto").value.trim()
+            };
+
+            const { error } = await supabaseClient
+                .from('workers')
+                .insert([newWorker]);
+
+            if (error) {
+                alert("Gagal menyimpan data: " + error.message);
+                return;
+            }
+
+            fetchWorkers();
+            toggleModal(false);
+            document.getElementById("addWorkerForm").reset();
+        }
+
+        async function deleteWorker(id) {
+            if (confirm(`Apakah Anda yakin ingin menghapus arsip pekerja ID: ${id}?`)) {
+                const { error } = await supabaseClient
+                    .from('workers')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) {
+                    alert("Gagal menghapus data: " + error.message);
+                    return;
+                }
+
+                fetchWorkers();
+            }
+        }
+
+        // FUNGSI EKSPOR OTOMATIS KE FILE CSV
+        function exportData() {
+            if (workers.length === 0) {
+                alert("Tidak ada data pekerja untuk diekspor!");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+            csvContent += "ID Pekerja,Nama Lengkap,Umur,No HP,Jabatan,Status Kepegawaian,Status Keaktifan\n";
+
+            workers.forEach(w => {
+                let row = `"${w.id}","${w.name}","${w.age}","${w.phone}","${w.role}","${w.contract}","${w.status}"`;
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Arsip_Tenaga_Kerja_${new Date().toISOString().slice(0,10)}.csv`);
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // PANGGIL FUNGSI INI AGAR DATA DIAMBIL DARI DATABASE SAAT HALAMAN DIBUKA
+        fetchWorkers();
+    </script>
+</body>
+</html>
